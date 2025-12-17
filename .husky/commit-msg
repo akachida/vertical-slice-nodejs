@@ -1,0 +1,15 @@
+RESET="\033[0m"
+BLACK_TEXT_YELLOW_BG="\033[30;43m"
+WHITE_TEXT_RED_BG="\033[97;41m"
+
+# Verifica se o pnpm está instalado
+if command -v pnpm &> /dev/null; then
+    echo -e "${BLACK_TEXT_YELLOW_BG} WARN: ${RESET} pnpm exec commitlint..."
+    pnpm exec commitlint --edit "$1"
+elif command -v npx &> /dev/null; then
+    echo -e "${BLACK_TEXT_YELLOW_BG} WARN: ${RESET} pnpm not found. fallback to npx..."
+    npx commitlint --edit "$1"
+else
+    echo -e "${WHITE_TEXT_RED_BG} ERR: ${RESET} No pnpm or npx were found. Install either package manager to continue."
+    exit 1
+fi

@@ -1,0 +1,16 @@
+# hook to run everything needed to the app to run perfectly in production
+RESET="\033[0m"
+BLACK_TEXT_YELLOW_BG="\033[30;43m"
+WHITE_TEXT_RED_BG="\033[97;41m"
+
+# verify if pnpm is installed to run with it
+if command -v pnpm &> /dev/null; then
+    echo -e "${BLACK_TEXT_YELLOW_BG} WARN: ${RESET} pnpm build:production..."
+    pnpm build:production
+elif command -v npx &> /dev/null; then
+    echo -e "${BLACK_TEXT_YELLOW_BG} WARN: ${RESET} pnpm not found. fallback to npx..."
+    npm run build:production
+else
+    echo -e "${WHITE_TEXT_RED_BG} ERR: ${RESET} No pnpm or npx were found. Install either package manager to continue."
+    exit 1
+fi
