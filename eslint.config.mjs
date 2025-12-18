@@ -6,15 +6,20 @@ import pluginUnicorn from 'eslint-plugin-unicorn';
 
 export default defineConfig(
   {
-    // General ESLint settings for all file types
-    files: ['**/*.{js,mts,ts,tsx}'],
+    // Global ignores (must be a standalone config object)
     ignores: [
       '**/dist/**',
       '**/coverage/**',
       '**/node_modules/**',
+      '**/tests/**',
       'commitlint.config.js',
+      'jest.config.js',
       'prisma.config.ts',
     ],
+  },
+  {
+    // General ESLint settings for all file types
+    files: ['**/*.{js,mts,ts,tsx}'],
     plugins: {
       '@typescript-eslint': tseslint.plugin,
       import: pluginImport,

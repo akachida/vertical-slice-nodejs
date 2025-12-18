@@ -19,11 +19,11 @@ export interface FeatureModule {
 
 ### 2. Startup System
 
-The `Startup` class in `src/shared/startup.ts` initializes the application, manages the mediator lifecycle, and automatically registers all routes from feature modules.
+The `Startup` class in `src/startup.ts` initializes the application, manages the mediator lifecycle, and automatically registers all routes from feature modules.
 
 ### 3. Composition Root
 
-The `composition-root.ts` file collects all feature modules and registers them with the mediator.
+The `startup.ts` file collects all feature modules and registers them with the mediator.
 
 ## Creating a New Feature
 
@@ -73,9 +73,9 @@ export class YourFeatureModule implements FeatureModule {
 }
 ```
 
-### Step 3: Register in Composition Root
+### Step 3: Register in Startup
 
-Add your module to `src/shared/composition-root.ts`:
+Add your module to `src/startup.ts`:
 
 ```typescript
 import { YourFeatureModule } from '@/features/v1/domain/your-feature'
@@ -98,7 +98,7 @@ Each feature is self-contained with its own dependencies, handlers, and routes.
 
 ### 2. **Scalability**
 
-Adding new features is straightforward - just implement the module and add it to the composition root.
+Adding new features is straightforward - just implement the module and add it to the startup file.
 
 ### 3. **Testability**
 
@@ -107,12 +107,12 @@ Features can be tested in isolation by creating a mediator and registering only 
 ### 4. **Clear Separation of Concerns**
 
 - Feature modules handle handler and route registration
-- Composition root orchestrates modules
+- Startup orchestrates modules
 - Startup manages application lifecycle
 
 ### 5. **No Central Configuration**
 
-The composition root doesn't need to know about handler dependencies or route paths - each feature manages its own.
+The startup file doesn't need to know about handler dependencies or route paths - each feature manages its own.
 
 ### 6. **Automatic Route Registration**
 
@@ -155,10 +155,10 @@ describe('YourFeatureModule', () => {
 When migrating existing features:
 
 1. Create a `FeatureModule` class in the feature's `index.ts`
-2. Move dependency initialization from `composition-root.ts` to the module's `registerHandlers` method
-3. Move handler registration from `composition-root.ts` to the module's `registerHandlers` method
+2. Move dependency initialization from `startup.ts` to the module's `registerHandlers` method
+3. Move handler registration from `startup.ts` to the module's `registerHandlers` method
 4. Move route creation to the module's `registerRoutes` method
-5. Update `composition-root.ts` to instantiate the new module in the `featureModules` array
+5. Update `startup.ts` to instantiate the new module in the `featureModules` array
 6. Remove old imports, handler registration, and router factory from the feature's `index.ts`
 7. Remove manual route mounting from `app.ts`
 
