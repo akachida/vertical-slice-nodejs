@@ -1,3 +1,7 @@
+---
+trigger: always_on
+---
+
 # Project Architecture & Guidelines
 
 ## 1. Overview
@@ -9,7 +13,7 @@ We use a **Mediator** pattern to decouple features from each other.
 
 ## 2. Directory Structure
 
-```
+```text
 src/
 ├── app.ts                # App entry point, middleware setup
 ├── server.ts             # Server startup
@@ -60,15 +64,15 @@ src/
   - `src/infrastructure/persistence/{service-name}` (e.g., `redis`, `s3`)
   - `src/infrastructure/messaging/{service-name}` (e.g., `sqs`, `kafka`)
 - **Pattern**:
-  1.  Define an **Interface** (Port) in `shared/infrastructure` (depending on scope).
-  2.  Create a **Concrete Implementation** (Adapter) in `infrastructure/`.
-  3.  Create a **Dummy/Mock Implementation** for local development.
+  1. Define an **Interface** (Port) in `shared/infrastructure` (depending on scope).
+  2. Create a **Concrete Implementation** (Adapter) in `infrastructure/`.
+  3. Create a **Dummy/Mock Implementation** for local development.
 
 ## 6. Development Workflow
 
-1.  **New Feature**: Create a new folder in `src/features/v1/<domain>/<feature-name>`.
-2.  **Define Command/Query**: Create a new command or query in the feature's folder.
-3.  **Implement Handler**: Write the logic in `handler.ts`.
-4.  **Define Controller**: Create a controller to handle the HTTP request and send the command/query to the mediator.
-5.  **Define Feature Module**: Create a feature module to register the handler and routes.
-6.  **Database**: Update `schema.prisma` if needed and run migrations.
+1. **New Feature**: Create a new folder in `src/features/v1/<domain>/<feature-name>`.
+2. **Define Command/Query**: Create a new command or query in the feature's folder.
+3. **Implement Handler**: Write the logic in `handler.ts`.
+4. **Define Controller**: Create a controller to handle the HTTP request and send the command/query to the mediator.
+5. **Define Feature Module**: Create a feature module to register the handler and routes.
+6. **Database**: Update `schema.prisma` if needed and run migrations.
