@@ -86,7 +86,7 @@ export const featureModules: FeatureModule[] = [
 ]
 ```
 
-### Step 4: Done!
+### Step 4: Done 🎉
 
 That's it! Your routes will be automatically registered when the application starts. No need to manually mount routers in `app.ts`.
 

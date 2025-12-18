@@ -1,8 +1,10 @@
+import eslint from '@eslint/js';
+import { defineConfig } from 'eslint/config';
 import tseslint from 'typescript-eslint';
 import pluginImport from 'eslint-plugin-import';
 import pluginUnicorn from 'eslint-plugin-unicorn';
 
-export default tseslint.config(
+export default defineConfig(
   {
     // General ESLint settings for all file types
     files: ['**/*.{js,mts,ts,tsx}'],
@@ -10,6 +12,8 @@ export default tseslint.config(
       '**/dist/**',
       '**/coverage/**',
       '**/node_modules/**',
+      'commitlint.config.js',
+      'prisma.config.ts',
     ],
     plugins: {
       '@typescript-eslint': tseslint.plugin,
@@ -19,7 +23,8 @@ export default tseslint.config(
     languageOptions: {
       parser: tseslint.parser,
       parserOptions: {
-        project: true,
+        projectService: true,
+        tsconfigRootDir: import.meta.dirname,
       },
     },
     rules: {
@@ -40,5 +45,6 @@ export default tseslint.config(
       'unicorn/prefer-node-protocol': 'error',
     },
   },
-  ...tseslint.configs.recommended,
+  eslint.configs.recommended,
+  tseslint.configs.recommended,
 );

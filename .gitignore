@@ -40,3 +40,4 @@ package-lock.json
 yarn.lock
 
 /src/generated/prisma
+prisma.config.js
