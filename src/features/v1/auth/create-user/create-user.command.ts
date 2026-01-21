@@ -1,6 +1,7 @@
 import { z } from 'zod'
 
 import { Command } from '@/shared/cqs'
+import { CreateUserDataRequest } from '@/features/v1/auth/create-user/create-user.controller'
 
 /**
  * Validation schema for CreateUser command
@@ -24,7 +25,7 @@ export class CreateUserCommand implements Command {
   /**
    * Factory method with validation
    */
-  static fromInput(input: unknown): CreateUserCommand {
+  static fromInput(input: CreateUserDataRequest): CreateUserCommand {
     const validated = createUserSchema.parse(input)
     return new CreateUserCommand(validated.email, validated.name)
   }

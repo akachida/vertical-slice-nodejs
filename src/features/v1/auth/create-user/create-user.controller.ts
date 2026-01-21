@@ -3,8 +3,12 @@ import { Request, Response } from 'express'
 import { CreateUserCommand, CreateUserResult } from './create-user.command'
 
 import { Mediator } from '@/shared/mediator'
-import { DomainError, errorToResponse, match } from '@/shared/result'
+import { ErrorResult, ErrorResultToHttpStatusCode } from '@/shared/result'
 
+export type CreateUserDataRequest = {
+  name: string
+  email: string
+}
 /**
  * Controller for user creation endpoint
  * Handles HTTP request/response and delegates to Mediator
@@ -17,19 +21,19 @@ export class CreateUserController {
    */
   async handle(req: Request, res: Response): Promise<void> {
     // Validate and create command from request body
-    const command = CreateUserCommand.fromInput(req.body)
+    const command = CreateUserCommand.fromInput(req.body as CreateUserDataRequest)
 
     // Send command through mediator
-    const result = await this.mediator.send<CreateUserResult, DomainError>(command)
+    const result = await this.mediator.send<CreateUserResult>(command)
 
     // Handle Result using pattern matching
-    match(result, {
-      onSuccess: (data) => {
-        res.status(201).json(data)
+    result.match({
+      ok: (data: CreateUserResult) => {
+        res.redirect(`/v1/some-entity-uri/${data.id}`)
       },
-      onFailure: (error) => {
-        const { status, body } = errorToResponse(error)
-        res.status(status).json(body)
+      err: (error: ErrorResult) => {
+        const statusCode = ErrorResultToHttpStatusCode.mapFrom(error)
+        res.status(statusCode).json(error)
       },
     })
   }

@@ -1,25 +1,25 @@
-import { CreateUserCommand, CreateUserResult } from './create-user.command'
-
+import { EmailAlreadyExistsError } from '@/features/v1/auth/create-user/errors/EmailAlreadyExistsError'
+import { CreateUserCommand, CreateUserResult } from '@/features/v1/auth/create-user/create-user.command'
 import { User, UserRepository } from '@/domain/user/user'
 import { EmailService } from '@/infrastructure/messaging/interfaces/email-service'
 import { CommandHandler } from '@/shared/cqs'
-import { DomainError, Errors, failure, Result, success } from '@/shared/result'
+import { ErrorResult, Result } from '@/shared/result'
 
 /**
  * Handler for CreateUserCommand
  * Orchestrates user creation with domain logic and infrastructure
  */
-export class CreateUserCommandHandler implements CommandHandler<CreateUserCommand, CreateUserResult, DomainError> {
+export class CreateUserCommandHandler implements CommandHandler<CreateUserCommand, CreateUserResult> {
   constructor(
     private readonly userRepository: UserRepository,
     private readonly emailService: EmailService,
   ) {}
 
-  async execute(command: CreateUserCommand): Promise<Result<CreateUserResult, DomainError>> {
+  async execute(command: CreateUserCommand): Promise<Result<CreateUserResult, ErrorResult>> {
     // Check if user already exists
     const existing = await this.userRepository.findByEmail(command.email)
     if (existing) {
-      return failure(Errors.conflict('User', 'User with this email already exists'))
+      return Result.err(EmailAlreadyExistsError.default())
     }
 
     // Create domain entity
@@ -33,7 +33,7 @@ export class CreateUserCommandHandler implements CommandHandler<CreateUserComman
       await this.emailService.sendWelcomeEmail(savedUser.email, savedUser.name)
     }
 
-    return success({
+    return Result.ok({
       id: savedUser.id,
       email: savedUser.email,
       name: savedUser.name,
