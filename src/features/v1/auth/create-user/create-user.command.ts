@@ -8,7 +8,7 @@ import { CreateUserDataRequest } from '@/features/v1/auth/create-user/create-use
  */
 export const createUserSchema = z.object({
   email: z.string().email(),
-  name: z.string().optional(),
+  name: z.string(),
 })
 
 /**
@@ -19,7 +19,7 @@ export class CreateUserCommand implements Command {
 
   constructor(
     public readonly email: string,
-    public readonly name?: string,
+    public readonly name: string,
   ) {}
 
   /**

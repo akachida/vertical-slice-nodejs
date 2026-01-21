@@ -1,17 +1,40 @@
 export class User {
-  constructor(
+  private constructor(
     public readonly id: string,
-    public readonly email: string,
-    public readonly name: string | null,
-    public readonly createdAt: Date,
-    public readonly updatedAt: Date,
-  ) {}
+    public email: string,
+    public name: string,
+    public createdAt: Date,
+    public updatedAt: Date,
+  ) {
+    this.id = id
 
-  public static create(email: string, name: string | null): User {
+    this.updateEmail(this.email)
+    this.updateName(this.name)
+
+    this.createdAt = createdAt
+    this.updatedAt = updatedAt
+  }
+
+  public static create(email: string, name: string): User {
     // Domain logic: validation, defaults, etc.
     // Note: ID is usually assigned by persistence or via UUID generation here if we want to decouple completely from DB ID generation.
-    // For this example, we'll let the persistence layer handle ID or assume it's passed in after creation.
-    return new User('', email, name, new Date(), new Date())
+    return new User(crypto.randomUUID(), email, name, new Date(), new Date())
+  }
+
+  public updateEmail(email: string): User {
+    // Domain logic: validation, defaults, etc.
+    this.email = email
+    this.updatedAt = new Date()
+
+    return this
+  }
+
+  public updateName(name: string): User {
+    // Domain logic: validation, defaults, etc.
+    this.name = name
+    this.updatedAt = new Date()
+
+    return this
   }
 }
 
