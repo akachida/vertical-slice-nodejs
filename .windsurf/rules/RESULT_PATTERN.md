@@ -6,7 +6,7 @@ trigger: always_on
 
 ## Overview
 
-The Result pattern is a functional programming approach to error handling that replaces traditional try-catch blocks with explicit return types. Instead of throwing exceptions, functions return a `Result<T, E>` type that can be either a `Success<T>` or `Failure<E>`.
+The Result pattern is a Rust-inspired approach to error handling that replaces traditional try-catch blocks with explicit return types. Instead of throwing exceptions, functions return a `Result<T, E>` class that encapsulates either a success value (Ok) or an error (Err).
 
 ## Why Result Pattern?
 
@@ -21,111 +21,171 @@ The Result pattern is a functional programming approach to error handling that r
 
 1. **Explicit error handling** - Errors are part of the function signature
 2. **Type safety** - TypeScript enforces handling both success and failure cases
-3. **Composable** - Results can be chained and transformed functionally
+3. **Composable** - Results can be chained and transformed
 4. **Predictable** - No hidden control flow jumps
 
 ## Core Types
 
-### Result Type
+### Result Class
 
 ```typescript
-type Result<T, E> = Success<T> | Failure<E>
+class Result<T, E> {
+  private readonly _isOk: boolean
+  private readonly _value: T | undefined
+  private readonly _error: E | undefined
 
-interface Success<T> {
-  readonly _tag: 'Success'
-  readonly value: T
-}
+  static ok<T, E = never>(value: T): Result<T, E>
+  static err<E, T = never>(error: E): Result<T, E>
+  static unit<E = never>(): Result<Unit, E>
 
-interface Failure<E> {
-  readonly _tag: 'Failure'
-  readonly error: E
+  isOk(): boolean
+  isErr(): boolean
+  unwrap(): T
+  unwrapOr(defaultValue: T): T
+  unwrapOrElse(fn: (error: E) => T): T
+  match<U>(handlers: { ok: (value: T) => U; err: (error: E) => U }): U
 }
+```
+
+### Unit Type
+
+```typescript
+// Unit type for commands that don't return a value
+type Unit = void
 ```
 
 ### Creating Results
 
 ```typescript
-import { success, failure } from '@/shared/result'
+import { Result, Unit } from '@/shared/result'
 
-// Success case
-const successResult = success({ id: '123', name: 'John' })
+// Success case with data
+const successResult = Result.ok({ id: '123', name: 'John' })
+
+// Success case without data (for commands)
+const unitResult = Result.unit()
 
 // Failure case
-const failureResult = failure(Errors.notFound('User'))
+const failureResult = Result.err(new EmailAlreadyExistsError())
 ```
 
 ## Error Types
 
-The `DomainError` union type provides structured error handling:
+### ErrorResult Base Class
+
+All errors extend the `ErrorResult` base class:
 
 ```typescript
-type DomainError =
-  | ValidationError // 400 - Invalid input
-  | UnauthorizedError // 401 - Authentication required
-  | ForbiddenError // 403 - Insufficient permissions
-  | NotFoundError // 404 - Resource not found
-  | ConflictError // 409 - Resource conflict
-  | InternalError // 500 - System error
+export class ErrorResult {
+  readonly type: string
+  readonly message: string
+  readonly details: string[]
+
+  constructor(message: string, details: string[]) {
+    this.type = this.constructor.name
+    this.message = message
+    this.details = details
+  }
+}
 ```
 
-### Error Factory
-
-Use the `Errors` factory for creating errors:
+### Creating Custom Errors
 
 ```typescript
-import { Errors } from '@/shared/result'
+import { ErrorResult } from '@/shared/result'
 
-Errors.validation('Invalid email format', { email: ['Must be a valid email'] })
-Errors.notFound('User', 'User with ID 123 not found')
-Errors.conflict('User', 'User with this email already exists')
-Errors.unauthorized('Token expired')
-Errors.forbidden('Admin access required')
-Errors.internal('Database connection failed', originalError)
+export class EmailAlreadyExistsError extends ErrorResult {
+  private constructor() {
+    super('User with this email already exists', [])
+  }
+
+  static emailAlreadyExists() {
+    return new EmailAlreadyExistsError()
+  }
+}
+
+export class InvalidEmailFormatError extends ErrorResult {
+  private constructor(email: string) {
+    super('Invalid email format', [`Email "${email}" is not valid`])
+  }
+
+  static invalidEmailFormat(email: string) {
+    return new InvalidEmailFormatError(email)
+  }
+}
+```
+
+### HTTP Status Code Mapping
+
+```typescript
+import { ErrorResultToHttpStatusCode, HttpStatus } from '@/shared/result'
+
+// Map error to HTTP status code
+const statusCode = ErrorResultToHttpStatusCode.mapFrom(error)
+
+// Available HttpStatus enum values:
+// - HttpStatus.OK (200)
+// - HttpStatus.CREATED (201)
+// - HttpStatus.BAD_REQUEST (400)
+// - HttpStatus.UNAUTHORIZED (401)
+// - HttpStatus.FORBIDDEN (403)
+// - HttpStatus.NOT_FOUND (404)
+// - HttpStatus.CONFLICT (409)
+// - HttpStatus.INTERNAL_SERVER_ERROR (500)
+// ...
 ```
 
 ## Usage in Handlers
 
-### Command Handler Example
+### Command Handler Example (Returning Unit)
 
 ```typescript
 import { CommandHandler } from '@/shared/cqs'
-import { DomainError, Errors, failure, Result, success } from '@/shared/result'
+import { ErrorResult, Result, Unit } from '@/shared/result'
+import { EmailAlreadyExistsError } from './errors/EmailAlreadyExistsError'
 
-export class CreateUserCommandHandler implements CommandHandler<CreateUserCommand, CreateUserResult, DomainError> {
-  async execute(command: CreateUserCommand): Promise<Result<CreateUserResult, DomainError>> {
+export class CreateUserCommandHandler implements CommandHandler<CreateUserCommand, Unit, ErrorResult> {
+  constructor(
+    private readonly userRepository: UserRepository,
+    private readonly emailService: EmailService,
+  ) {}
+
+  async execute(command: CreateUserCommand): Promise<Result<Unit, ErrorResult>> {
     // Check for conflicts
     const existing = await this.userRepository.findByEmail(command.email)
     if (existing) {
-      return failure(Errors.conflict('User', 'User with this email already exists'))
+      return Result.err(EmailAlreadyExistsError.create())
     }
 
     // Create and save
     const user = User.create(command.email, command.name)
     const saved = await this.userRepository.save(user)
 
-    // Return success
-    return success({
-      id: saved.id,
-      email: saved.email,
-      name: saved.name,
-      createdAt: saved.createdAt,
-    })
+    // Send welcome email
+    await this.emailService.sendWelcomeEmail(saved.email, saved.name)
+
+    // Return success without data
+    return Result.unit()
   }
 }
 ```
 
-### Query Handler Example
+### Query Handler Example (Returning Data)
 
 ```typescript
-export class GetUserByIdQueryHandler implements QueryHandler<GetUserByIdQuery, UserDto, DomainError> {
-  async execute(query: GetUserByIdQuery): Promise<Result<UserDto, DomainError>> {
+import { QueryHandler } from '@/shared/cqs'
+import { ErrorResult, Result } from '@/shared/result'
+import { UserNotFoundError } from './errors/UserNotFoundError'
+
+export class GetUserByIdQueryHandler implements QueryHandler<GetUserByIdQuery, UserDto, ErrorResult> {
+  async execute(query: GetUserByIdQuery): Promise<Result<UserDto, ErrorResult>> {
     const user = await this.userRepository.findById(query.id)
 
     if (!user) {
-      return failure(Errors.notFound('User', `User with ID ${query.id} not found`))
+      return Result.err(UserNotFoundError.create(query.id))
     }
 
-    return success({
+    return Result.ok({
       id: user.id,
       email: user.email,
       name: user.name,
@@ -136,98 +196,138 @@ export class GetUserByIdQueryHandler implements QueryHandler<GetUserByIdQuery, U
 
 ## Usage in Controllers
 
-Controllers use the `match` function to handle Results:
+Controllers use the `result.match()` method to handle Results:
 
 ```typescript
-import { match, errorToResponse, DomainError } from '@/shared/result'
+import { Request, Response } from 'express'
+import { Mediator } from '@/shared/mediator'
+import { ErrorResult, ErrorResultToHttpStatusCode, Unit } from '@/shared/result'
 
-async handle(req: Request, res: Response): Promise<void> {
-  const command = CreateUserCommand.fromInput(req.body)
-  const result = await this.mediator.send<CreateUserResult, DomainError>(command)
+export class CreateUserController {
+  constructor(private readonly mediator: Mediator) {}
 
-  match(result, {
-    onSuccess: (data) => {
-      res.status(201).json(data)
-    },
-    onFailure: (error) => {
-      const { status, body } = errorToResponse(error)
-      res.status(status).json(body)
-    },
-  })
+  async handle(req: Request, res: Response): Promise<void> {
+    const command = CreateUserCommand.from(req.body)
+    const result = await this.mediator.send<Unit>(command)
+
+    result.match({
+      ok: (data) => {
+        res.status(201).json(data)
+      },
+      err: (error: ErrorResult) => {
+        const statusCode = ErrorResultToHttpStatusCode.mapFrom(error)
+        res.status(statusCode).json(error)
+      },
+    })
+  }
 }
 ```
 
-## Utility Functions
+## Result Methods
 
-### Type Guards
+### Type Checking
 
 ```typescript
-import { isSuccess, isFailure } from '@/shared/result'
-
-if (isSuccess(result)) {
-  console.log(result.value) // TypeScript knows this is Success<T>
+// Check if result is Ok
+if (result.isOk()) {
+  console.log('Success!')
 }
 
-if (isFailure(result)) {
-  console.log(result.error) // TypeScript knows this is Failure<E>
+// Check if result is Err
+if (result.isErr()) {
+  console.log('Failed!')
+}
+
+// Check with predicate
+if (result.isOkAnd((value) => value.age > 18)) {
+  console.log('Adult user')
+}
+
+if (result.isErrAnd((error) => error.type === 'NotFoundError')) {
+  console.log('Not found')
 }
 ```
 
-### Transformations
+### Unwrapping Values
 
 ```typescript
-import { map, mapError, flatMap } from '@/shared/result'
+// Unwrap - throws if Err
+const value = result.unwrap()
 
-// Transform success value
-const mapped = map(result, (user) => user.name)
+// Unwrap with default
+const value = result.unwrapOr({ id: 'default', name: 'Unknown' })
 
-// Transform error
-const mappedError = mapError(result, (error) => ({ ...error, timestamp: new Date() }))
+// Unwrap with function
+const value = result.unwrapOrElse((error) => {
+  console.error(error)
+  return defaultValue
+})
 
-// Chain Result-returning functions
-const chained = flatMap(result, (user) => validateUser(user))
+// Get Ok value as optional
+const maybeValue = result.ok() // T | undefined
+
+// Get Err value as optional
+const maybeError = result.err() // E | undefined
 ```
 
-### Default Values
+### Pattern Matching
 
 ```typescript
-import { getOrElse, getOrElseWith } from '@/shared/result'
-
-// Get value or default
-const name = getOrElse(result, 'Unknown')
-
-// Get value or compute from error
-const name = getOrElseWith(result, (error) => `Error: ${error.message}`)
+// Match on result
+const message = result.match({
+  ok: (user) => `Welcome ${user.name}!`,
+  err: (error) => `Error: ${error.message}`,
+})
 ```
 
-### Combining Results
+## Command Patterns
+
+### Commands Returning Unit
+
+Most commands don't need to return data - they just indicate success or failure:
 
 ```typescript
-import { combine, combineAll } from '@/shared/result'
+export class CreateUserCommand implements Command {
+  constructor(
+    public readonly email: string,
+    public readonly name: string,
+  ) {}
+}
 
-// Fails fast on first error
-const combined = combine([result1, result2, result3])
-
-// Collects all errors
-const combinedAll = combineAll([result1, result2, result3])
+// Handler returns Unit
+export class CreateUserCommandHandler implements CommandHandler<CreateUserCommand, Unit, ErrorResult> {
+  async execute(command: CreateUserCommand): Promise<Result<Unit, ErrorResult>> {
+    // ... business logic ...
+    return Result.unit()
+  }
+}
 ```
 
-### Wrapping Unsafe Code
+### Commands Returning Data
+
+Some commands need to return created data:
 
 ```typescript
-import { tryCatch, tryCatchAsync } from '@/shared/result'
+export interface CreateUserResult {
+  id: string
+  email: string
+  name: string
+  createdAt: Date
+}
 
-// Synchronous
-const result = tryCatch(
-  () => JSON.parse(jsonString),
-  (error) => Errors.validation('Invalid JSON'),
-)
+export class CreateUserCommandHandler implements CommandHandler<CreateUserCommand, CreateUserResult, ErrorResult> {
+  async execute(command: CreateUserCommand): Promise<Result<CreateUserResult, ErrorResult>> {
+    const user = User.create(command.email, command.name)
+    const saved = await this.userRepository.save(user)
 
-// Asynchronous
-const result = await tryCatchAsync(
-  () => fetch(url).then((r) => r.json()),
-  (error) => Errors.internal('Network error', error),
-)
+    return Result.ok({
+      id: saved.id,
+      email: saved.email,
+      name: saved.name,
+      createdAt: saved.createdAt,
+    })
+  }
+}
 ```
 
 ## Best Practices
@@ -236,125 +336,87 @@ const result = await tryCatchAsync(
 
 ```typescript
 // ✅ Good
-async execute(command: Command): Promise<Result<Data, DomainError>> {
-  return success(data)
+async execute(command: Command): Promise<Result<Unit, ErrorResult>> {
+  return Result.unit()
 }
 
-// ❌ Bad - throws instead of returning failure
-async execute(command: Command): Promise<Result<Data, DomainError>> {
+// ❌ Bad - throws instead of returning Result.err
+async execute(command: Command): Promise<Result<Unit, ErrorResult>> {
   throw new Error('Something went wrong')
 }
 ```
 
-### 2. Use Specific Error Types
+### 2. Create Custom Error Classes
 
 ```typescript
-// ✅ Good - specific error type
-return failure(Errors.notFound('User', `User ${id} not found`))
+// ✅ Good - custom error class
+export class EmailAlreadyExistsError extends ErrorResult {
+  private constructor() {
+    super('User with this email already exists', [])
+  }
+
+  static emailAlreadyExists() {
+    return new EmailAlreadyExistsError()
+  }
+}
+
+return Result.err(EmailAlreadyExistsError.emailAlreadyExists())
 
 // ❌ Bad - generic error
-return failure(Errors.internal('Not found'))
+return Result.err(new ErrorResult('Something went wrong', []))
 ```
 
 ### 3. Handle All Cases in Controllers
 
 ```typescript
 // ✅ Good - handles both cases
-match(result, {
-  onSuccess: (data) => res.status(200).json(data),
-  onFailure: (error) => {
-    const { status, body } = errorToResponse(error)
-    res.status(status).json(body)
+result.match({
+  ok: (data) => res.status(200).json(data),
+  err: (error) => {
+    const statusCode = ErrorResultToHttpStatusCode.mapFrom(error)
+    res.status(statusCode).json(error)
   },
 })
 
-// ❌ Bad - ignores failure case
-if (isSuccess(result)) {
-  res.json(result.value)
+// ❌ Bad - ignores error case
+if (result.isOk()) {
+  res.json(result.unwrap())
 }
 ```
 
-### 4. Use tryCatchAsync for External Calls
+### 4. Use Unit for Commands Without Return Data
 
 ```typescript
-// ✅ Good - wraps external call
-const result = await tryCatchAsync(
-  () => this.externalApi.call(data),
-  (error) => Errors.internal('External API failed', error),
-)
+// ✅ Good - explicit Unit type
+async execute(command: Command): Promise<Result<Unit, ErrorResult>> {
+  // ... business logic ...
+  return Result.unit()
+}
 
-// ❌ Bad - lets exception propagate
-const data = await this.externalApi.call(data) // May throw!
+// ❌ Bad - unclear void type
+async execute(command: Command): Promise<Result<void, ErrorResult>> {
+  return Result.ok(undefined)
+}
+```
+
+### 5. Map Errors to HTTP Status Codes when it's not 400 Bad Request
+
+```typescript
+// ✅ Good - use ErrorResultToHttpStatusCode
+const statusCode = ErrorResultToHttpStatusCode.mapFrom(error)
+res.status(statusCode).json(error)
+
+// ❌ Bad - hardcoded status
+res.status(500).json(error)
 ```
 
 ## File Structure
 
 ```text
 src/shared/result/
-├── index.ts      # Public exports
-├── result.ts     # Result type and utility functions
-└── errors.ts     # Error types and factory
-```
-
-## Migration Guide
-
-### From try-catch to Result
-
-**Before:**
-
-```typescript
-async execute(command: Command): Promise<Data> {
-  try {
-    const user = await this.repo.find(command.id)
-    if (!user) {
-      throw new Error('User not found')
-    }
-    return user
-  } catch (error) {
-    throw new Error('Failed to get user')
-  }
-}
-```
-
-**After:**
-
-```typescript
-async execute(command: Command): Promise<Result<Data, DomainError>> {
-  const user = await this.repo.find(command.id)
-  if (!user) {
-    return failure(Errors.notFound('User'))
-  }
-  return success(user)
-}
-```
-
-### Controller Migration
-
-**Before:**
-
-```typescript
-async handle(req: Request, res: Response): Promise<void> {
-  try {
-    const result = await this.mediator.send(command)
-    res.json(result)
-  } catch (error) {
-    res.status(500).json({ error: error.message })
-  }
-}
-```
-
-**After:**
-
-```typescript
-async handle(req: Request, res: Response): Promise<void> {
-  const result = await this.mediator.send<Data, DomainError>(command)
-
-  match(result, {
-    onSuccess: (data) => res.json(data),
-    onFailure: (error) => {
-      const { status, body } = errorToResponse(error)
-      res.status(status).json(body)
-    },
-  })
-}
+├── index.ts                    # Public exports
+├── result.ts                   # Result class
+├── errors.ts                   # ErrorResult base class
+├── http-status.ts              # HttpStatus enum
+└── error-to-http-status.ts     # Error to HTTP status mapper
 ```
