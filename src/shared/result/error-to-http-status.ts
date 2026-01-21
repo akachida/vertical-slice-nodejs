@@ -1,3 +1,4 @@
+import { EmailAlreadyExistsError } from '@/features/v1/auth/create-user/errors/email-already-exists-error'
 import { ErrorResult } from '@/shared/result/errors'
 import { HttpStatus } from '@/shared/result/http-status'
 
@@ -19,6 +20,8 @@ export class ErrorResultToHttpStatusCode {
     // if (error instanceof ForbiddenAccessError) return HttpStatus.FORBIDDEN
     // if (error instanceof UpdateSimulationNotAllowedError) return HttpStatus.CONFLICT
     // if (error instanceof FailedToGenerateSimulationPdfError) return HttpStatus.INTERNAL_SERVER_ERROR
+
+    if (_error instanceof EmailAlreadyExistsError) return HttpStatus.CONFLICT
 
     return HttpStatus.BAD_REQUEST
   }

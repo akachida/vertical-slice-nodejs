@@ -1,4 +1,4 @@
-import { EmailAlreadyExistsError } from '@/features/v1/auth/create-user/errors/EmailAlreadyExistsError'
+import { EmailAlreadyExistsError } from '@/features/v1/auth/create-user/errors/email-already-exists-error'
 import { CreateUserCommand, CreateUserResult } from '@/features/v1/auth/create-user/create-user.command'
 import { User, UserRepository } from '@/domain/user/user'
 import { EmailService } from '@/infrastructure/messaging/interfaces/email-service'
