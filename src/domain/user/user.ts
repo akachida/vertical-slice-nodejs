@@ -21,6 +21,11 @@ export class User {
     return new User(crypto.randomUUID(), email, name, new Date(), new Date())
   }
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  public static fromPrisma(prismaUser: any): User {
+    return new User(prismaUser.id, prismaUser.email, prismaUser.name, prismaUser.createdAt, prismaUser.updatedAt)
+  }
+
   public updateEmail(email: string): User {
     // Domain logic: validation, defaults, etc.
     this.email = email

@@ -23,7 +23,7 @@ export class CreateUserCommandHandler implements CommandHandler<CreateUserComman
     }
 
     // Create domain entity
-    const newUser = User.create(command.email, command.name || null)
+    const newUser = User.create(command.email, command.name)
 
     // Persist to repository
     const savedUser = await this.userRepository.save(newUser)
