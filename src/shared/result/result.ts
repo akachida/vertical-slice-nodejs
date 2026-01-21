@@ -1,183 +1,137 @@
 /**
  * Result Pattern Implementation
- * Functional approach to error handling without try-catch
+ * Rust-inspired Result type for explicit error handling
+ * @template T - The success value type (Ok)
+ * @template E - The error type (Err)
  */
 
 /**
- * Represents a successful result containing a value
+ * Unit type for commands that don't return a value
+ * Represents successful execution without a meaningful return value
  */
-export interface Success<T> {
-  readonly _tag: 'Success'
-  readonly value: T
-}
+export type Unit = void
 
 /**
- * Represents a failed result containing an error
+ * Result class - Rust-inspired Result type
+ * Encapsulates either a success value (Ok) or an error (Err)
  */
-export interface Failure<E> {
-  readonly _tag: 'Failure'
-  readonly error: E
-}
+export class Result<T, E> {
+  private readonly _isOk: boolean
+  private readonly _value: T | undefined
+  private readonly _error: E | undefined
 
-/**
- * Result type - discriminated union of Success and Failure
- * @template T - The success value type
- * @template E - The error type
- */
-export type Result<T, E> = Success<T> | Failure<E>
-
-/**
- * Creates a successful Result
- */
-export function success<T>(value: T): Success<T> {
-  return { _tag: 'Success', value }
-}
-
-/**
- * Creates a failed Result
- */
-export function failure<E>(error: E): Failure<E> {
-  return { _tag: 'Failure', error }
-}
-
-/**
- * Type guard to check if a Result is a Success
- */
-export function isSuccess<T, E>(result: Result<T, E>): result is Success<T> {
-  return result._tag === 'Success'
-}
-
-/**
- * Type guard to check if a Result is a Failure
- */
-export function isFailure<T, E>(result: Result<T, E>): result is Failure<E> {
-  return result._tag === 'Failure'
-}
-
-/**
- * Maps the success value of a Result
- */
-export function map<T, U, E>(result: Result<T, E>, fn: (value: T) => U): Result<U, E> {
-  if (isSuccess(result)) {
-    return success(fn(result.value))
+  constructor(isOk: boolean, value?: T, error?: E) {
+    this._isOk = isOk
+    this._value = value
+    this._error = error
   }
-  return result
-}
 
-/**
- * Maps the error of a Result
- */
-export function mapError<T, E, F>(result: Result<T, E>, fn: (error: E) => F): Result<T, F> {
-  if (isFailure(result)) {
-    return failure(fn(result.error))
+  /**
+   * Creates a successful Result (Ok variant)
+   */
+  static ok<T, E = never>(value: T): Result<T, E> {
+    return new Result<T, E>(true, value, undefined)
   }
-  return result
-}
 
-/**
- * Chains Result-returning functions (flatMap/bind)
- */
-export function flatMap<T, U, E>(result: Result<T, E>, fn: (value: T) => Result<U, E>): Result<U, E> {
-  if (isSuccess(result)) {
-    return fn(result.value)
+  /**
+   * Creates a failed Result (Err variant)
+   */
+  static err<E, T = never>(error: E): Result<T, E> {
+    return new Result<T, E>(false, undefined, error)
   }
-  return result
-}
 
-/**
- * Unwraps a Result, returning the value or a default
- */
-export function getOrElse<T, E>(result: Result<T, E>, defaultValue: T): T {
-  if (isSuccess(result)) {
-    return result.value
+  /**
+   * Creates a successful Result with no value (Unit/void)
+   * Useful for commands that don't return data
+   */
+  static unit<E = never>(): Result<Unit, E> {
+    return new Result<Unit, E>(true, undefined, undefined)
   }
-  return defaultValue
-}
 
-/**
- * Unwraps a Result, returning the value or computing a default from the error
- */
-export function getOrElseWith<T, E>(result: Result<T, E>, fn: (error: E) => T): T {
-  if (isSuccess(result)) {
-    return result.value
+  /**
+   * Returns true if the result is Ok
+   */
+  isOk(): boolean {
+    return this._isOk
   }
-  return fn(result.error)
-}
 
-/**
- * Pattern matches on a Result
- */
-export function match<T, E, U>(
-  result: Result<T, E>,
-  handlers: {
-    onSuccess: (value: T) => U
-    onFailure: (error: E) => U
-  },
-): U {
-  if (isSuccess(result)) {
-    return handlers.onSuccess(result.value)
+  /**
+   * Returns true if the result is Err
+   */
+  isErr(): boolean {
+    return !this._isOk
   }
-  return handlers.onFailure(result.error)
-}
 
-/**
- * Wraps a function that may throw into a Result-returning function
- */
-export function tryCatch<T, E>(fn: () => T, onError: (error: unknown) => E): Result<T, E> {
-  try {
-    return success(fn())
-  } catch (error) {
-    return failure(onError(error))
+  /**
+   * Returns true if the result is Ok and the value satisfies the predicate
+   */
+  isOkAnd(predicate: (value: T) => boolean): boolean {
+    return this._isOk && predicate(this._value as T)
   }
-}
 
-/**
- * Wraps an async function that may throw into a Result-returning function
- */
-export async function tryCatchAsync<T, E>(fn: () => Promise<T>, onError: (error: unknown) => E): Promise<Result<T, E>> {
-  try {
-    const value = await fn()
-    return success(value)
-  } catch (error) {
-    return failure(onError(error))
+  /**
+   * Returns true if the result is Err and the error satisfies the predicate
+   */
+  isErrAnd(predicate: (error: E) => boolean): boolean {
+    return !this._isOk && predicate(this._error as E)
   }
-}
 
-/**
- * Combines multiple Results into a single Result containing an array
- * Returns Failure with the first error encountered
- */
-export function combine<T, E>(results: Result<T, E>[]): Result<T[], E> {
-  const values: T[] = []
-
-  for (const result of results) {
-    if (isFailure(result)) {
-      return result
+  /**
+   * Returns the contained Ok value.
+   * Throws if the result is Err.
+   */
+  unwrap(): T {
+    if (this._isOk) {
+      return this._value as T
     }
-    values.push(result.value)
+    throw new Error(`Called unwrap on an Err value: ${JSON.stringify(this._error)}`)
   }
 
-  return success(values)
-}
+  /**
+   * Returns the contained Ok value or a provided default.
+   */
+  unwrapOr(defaultValue: T): T {
+    return this._isOk ? (this._value as T) : defaultValue
+  }
 
-/**
- * Combines multiple Results, collecting all errors
- */
-export function combineAll<T, E>(results: Result<T, E>[]): Result<T[], E[]> {
-  const values: T[] = []
-  const errors: E[] = []
+  /**
+   * Returns the contained Ok value or computes it from a closure.
+   */
+  unwrapOrElse(fn: (error: E) => T): T {
+    return this._isOk ? (this._value as T) : fn(this._error as E)
+  }
 
-  for (const result of results) {
-    if (isFailure(result)) {
-      errors.push(result.error)
-    } else {
-      values.push(result.value)
+  /**
+   * Returns the contained Err value.
+   * Throws if the result is Ok.
+   */
+  unwrapErr(): E {
+    if (!this._isOk) {
+      return this._error as E
     }
+    throw new Error(`Called unwrapErr on an Ok value: ${JSON.stringify(this._value)}`)
   }
 
-  if (errors.length > 0) {
-    return failure(errors)
+  /**
+   * Converts from Result<T, E> to T | undefined.
+   * Returns the Ok value or undefined.
+   */
+  ok(): T | undefined {
+    return this._isOk ? (this._value as T) : undefined
   }
 
-  return success(values)
+  /**
+   * Converts from Result<T, E> to E | undefined.
+   * Returns the Err value or undefined.
+   */
+  err(): E | undefined {
+    return this._isOk ? undefined : (this._error as E)
+  }
+
+  /**
+   * Pattern matches on the Result, executing the appropriate handler.
+   */
+  match<U>(handlers: { ok: (value: T) => U; err: (error: E) => U }): U {
+    return this._isOk ? handlers.ok(this._value as T) : handlers.err(this._error as E)
+  }
 }
