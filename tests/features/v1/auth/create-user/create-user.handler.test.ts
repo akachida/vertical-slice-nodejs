@@ -2,7 +2,7 @@ import { CreateUserCommandHandler } from '@/features/v1/auth/create-user/create-
 import { CreateUserCommand } from '@/features/v1/auth/create-user/create-user.command'
 import { User } from '@/domain/user/user'
 import { EmailService } from '@/infrastructure/messaging/interfaces/email-service'
-import { success } from '@/shared/result'
+import { Result } from '@/shared/result'
 
 describe('CreateUserCommandHandler', () => {
   it('should create a new user', async () => {
@@ -22,7 +22,7 @@ describe('CreateUserCommandHandler', () => {
     expect(userRepository.save).toHaveBeenCalled()
     expect(emailService.sendWelcomeEmail).toHaveBeenCalled()
     expect(result).toEqual(
-      success({
+      Result.ok({
         id: expect.any(String),
         email: 'test@test.com',
         name: 'Test User',
