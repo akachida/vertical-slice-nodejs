@@ -13,7 +13,7 @@ const unitOfWorkFactory = new PrismaUnitOfWorkFactory(prisma)
 /**
  * All feature modules in the application
  */
-export const featureModules: FeatureModule[] = [new CreateUserModule(unitOfWorkFactory)]
+export const featureModules: FeatureModule[] = [new CreateUserModule()]
 
 /**
  * Composition Root

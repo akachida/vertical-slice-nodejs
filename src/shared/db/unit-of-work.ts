@@ -33,6 +33,13 @@ export interface IUnitOfWork {
   executeInTransaction<TResult, TError>(work: () => Promise<Result<TResult, TError>>): Promise<Result<TResult, TError>>
 
   /**
+   * Registers a function to be executed after the transaction successfully commits.
+   * Useful for side effects like sending emails or publishing events.
+   * @param hook - The function to execute post-commit.
+   */
+  addPostCommitHook(hook: () => Promise<void>): void
+
+  /**
    * DbSet-like repository accessors
    * Similar to EF Core's context.Users, context.Orders, etc.
    */

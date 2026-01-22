@@ -6,20 +6,20 @@ import { CreateUserCommandHandler } from './create-user.handler'
 
 import { ConsoleEmailService } from '@/infrastructure/messaging/email-service/console-email-service'
 import { FeatureModule, InMemoryMediator, RouteConfig } from '@/shared/mediator'
-import { IUnitOfWorkFactory } from '@/shared/db/unit-of-work'
 
 /**
  * Create User Feature Module
  * Handles user creation command and route registration
  */
 export class CreateUserModule implements FeatureModule {
-  constructor(private readonly unitOfWorkFactory: IUnitOfWorkFactory) {}
-
   registerHandlers(mediator: InMemoryMediator): void {
     const emailService = new ConsoleEmailService()
 
-    mediator.registerFactory(CreateUserCommand.name, () => {
-      const unitOfWork = this.unitOfWorkFactory.create()
+    mediator.registerFactory(CreateUserCommand.name, (unitOfWork) => {
+      if (!unitOfWork) {
+        throw new Error('Unit of work is not available for this handler')
+      }
+
       return new CreateUserCommandHandler(unitOfWork, emailService)
     })
   }

@@ -25,8 +25,13 @@ class RollbackSignal extends Error {
 export class PrismaUnitOfWork implements IUnitOfWork {
   private transactionContext: PrismaTransaction | null = null
   private _users: UserRepository | null = null
+  private postCommitHooks: (() => Promise<void>)[] = []
 
   constructor(private readonly prisma: PrismaClient) {}
+
+  addPostCommitHook(hook: () => Promise<void>): void {
+    this.postCommitHooks.push(hook)
+  }
 
   /**
    * DbSet-like accessor for Users repository
@@ -63,6 +68,12 @@ export class PrismaUnitOfWork implements IUnitOfWork {
         return workResult
       })
 
+      if (result.isOk()) {
+        for (const hook of this.postCommitHooks) {
+          await hook()
+        }
+      }
+
       return result
     } catch (error) {
       if (error instanceof RollbackSignal) {
@@ -75,6 +86,7 @@ export class PrismaUnitOfWork implements IUnitOfWork {
     } finally {
       this.transactionContext = null
       this._users = null
+      this.postCommitHooks = []
     }
   }
 }

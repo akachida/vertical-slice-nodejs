@@ -5,6 +5,7 @@ import { EmailService } from '@/infrastructure/messaging/interfaces/email-servic
 import { CommandHandler } from '@/shared/cqs'
 import { ErrorResult, Result } from '@/shared/result'
 import { IUnitOfWork } from '@/shared/db/unit-of-work'
+import { Prisma } from '@/shared/db/generated/client/client'
 
 /**
  * Handler for CreateUserCommand
@@ -24,18 +25,27 @@ export class CreateUserCommandHandler implements CommandHandler<CreateUserComman
     }
 
     const newUser = User.create(command.email, command.name)
-    const savedUser = await this.unitOfWork.users.save(newUser)
 
-    if (savedUser.name) {
-      await this.emailService.sendWelcomeEmail(savedUser.email, savedUser.name)
+    try {
+      const savedUser = await this.unitOfWork.users.save(newUser)
+
+      this.unitOfWork.addPostCommitHook(async () => {
+        await this.emailService.sendWelcomeEmail(savedUser.email, savedUser.name)
+      })
+
+      return Result.ok({
+        id: savedUser.id,
+        email: savedUser.email,
+        name: savedUser.name,
+        createdAt: savedUser.createdAt,
+      })
+    } catch (e) {
+      if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === 'P2002') {
+        return Result.err(EmailAlreadyExistsError.default())
+      }
+
+      throw e
     }
-
-    return Result.ok({
-      id: savedUser.id,
-      email: savedUser.email,
-      name: savedUser.name,
-      createdAt: savedUser.createdAt,
-    })
   }
 }
 
@@ -46,6 +56,6 @@ export class CreateUserCommandHandler implements CommandHandler<CreateUserComman
 export type CreateUserResult = {
   id: string
   email: string
-  name: string | null
+  name: string
   createdAt: Date
 }

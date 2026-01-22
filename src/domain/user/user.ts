@@ -1,3 +1,5 @@
+import { User as PrismaUser } from '@/shared/db/generated/client/client'
+
 /**
  * User domain entity representing a registered user in the system.
  * Encapsulates user data and business rules for user management.
@@ -32,9 +34,14 @@ export class User {
    * Reconstitutes a User entity from Prisma database record.
    * @param prismaUser - Raw Prisma user record
    */
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  public static fromPrisma(prismaUser: any): User {
-    return new User(prismaUser.id, prismaUser.email, prismaUser.name, prismaUser.createdAt, prismaUser.updatedAt)
+  public static fromPrisma(prismaUser: PrismaUser): User {
+    return new User(
+      prismaUser.id,
+      prismaUser.email,
+      prismaUser.name as string,
+      prismaUser.createdAt,
+      prismaUser.updatedAt,
+    )
   }
 
   /**

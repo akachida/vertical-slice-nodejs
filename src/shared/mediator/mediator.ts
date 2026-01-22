@@ -1,6 +1,6 @@
 import { Command, CommandHandler, Query, QueryHandler, isTransactionalCommand } from '@/shared/cqs'
 import { ErrorResult, Result } from '@/shared/result'
-import { IUnitOfWorkFactory } from '@/shared/db/unit-of-work'
+import { IUnitOfWork, IUnitOfWorkFactory } from '@/shared/db/unit-of-work'
 
 /**
  * Union type representing any request that can be sent through the mediator.
@@ -42,7 +42,7 @@ export class InMemoryMediator implements Mediator {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   private handlers = new Map<string, Handler<any, any, any>>()
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  private handlerFactories = new Map<string, () => Handler<any, any, any>>()
+  private handlerFactories = new Map<string, (unitOfWork?: IUnitOfWork) => Handler<any, any, any>>()
   private unitOfWorkFactory?: IUnitOfWorkFactory
 
   /**
@@ -78,7 +78,7 @@ export class InMemoryMediator implements Mediator {
    */
   registerFactory<TRequest extends Request, TResult, TError = ErrorResult>(
     requestName: string,
-    factory: () => Handler<TRequest, TResult, TError>,
+    factory: (unitOfWork?: IUnitOfWork) => Handler<TRequest, TResult, TError>,
   ): void {
     if (this.handlers.has(requestName) || this.handlerFactories.has(requestName)) {
       throw new Error(`Handler for ${requestName} is already registered`)
@@ -96,16 +96,29 @@ export class InMemoryMediator implements Mediator {
    */
   async send<TResult, TError = ErrorResult>(request: Request): Promise<Result<TResult, TError>> {
     const requestName = request.constructor.name
-
     const factory = this.handlerFactories.get(requestName)
-    const handler = factory ? factory() : this.handlers.get(requestName)
+
+    if (request instanceof Command && isTransactionalCommand(request)) {
+      if (!factory) {
+        throw new Error(`No handler factory registered for transactional command ${requestName}. Use registerFactory.`)
+      }
+      return this.executeInTransaction(factory, request)
+    }
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    let handler: Handler<any, any, any> | undefined
+    if (factory) {
+      if (!this.unitOfWorkFactory) {
+        throw new Error('UnitOfWorkFactory not configured. A handler factory was found, which implies a UoW is needed.')
+      }
+      const unitOfWork = this.unitOfWorkFactory.create()
+      handler = factory(unitOfWork)
+    } else {
+      handler = this.handlers.get(requestName)
+    }
 
     if (!handler) {
       throw new Error(`No handler registered for ${requestName}`)
-    }
-
-    if (request instanceof Command && isTransactionalCommand(request)) {
-      return this.executeInTransaction(handler, request)
     }
 
     return handler.execute(request)
@@ -116,7 +129,7 @@ export class InMemoryMediator implements Mediator {
    * Automatically commits on Result.ok() and rolls back on Result.err()
    */
   private async executeInTransaction<TResult, TError = ErrorResult>(
-    handler: Handler<Request, TResult, TError>,
+    handlerFactory: (unitOfWork: IUnitOfWork) => Handler<Request, TResult, TError>,
     request: Request,
   ): Promise<Result<TResult, TError>> {
     if (!this.unitOfWorkFactory) {
@@ -126,6 +139,7 @@ export class InMemoryMediator implements Mediator {
     }
 
     const unitOfWork = this.unitOfWorkFactory.create()
+    const handler = handlerFactory(unitOfWork)
 
     return unitOfWork.executeInTransaction(async () => {
       return handler.execute(request)
