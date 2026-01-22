@@ -15,8 +15,8 @@ import type * as Prisma from './prismaNamespace'
 
 const config: runtime.GetPrismaClientConfig = {
   previewFeatures: [],
-  clientVersion: '7.1.0',
-  engineVersion: 'ab635e6b9d606fa5c8fb8b1a7f909c3c3c1c98ba',
+  clientVersion: '7.3.0',
+  engineVersion: '9d6ad21cbbceab97458517b147a6a09ff43aa735',
   activeProvider: 'sqlite',
   inlineSchema:
     '// This is your Prisma schema file,\n// learn more about it in the docs: https://pris.ly/d/prisma-schema\n\n// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?\n// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init\n\ngenerator client {\n  provider = "prisma-client"\n  output   = "../src/shared/db/generated/client"\n}\n\ndatasource db {\n  provider = "sqlite"\n}\n\nmodel User {\n  id        String   @id @default(uuid())\n  email     String   @unique\n  name      String?\n  createdAt DateTime @default(now())\n  updatedAt DateTime @updatedAt\n}\n',
@@ -38,12 +38,14 @@ async function decodeBase64AsWasm(wasmBase64: string): Promise<WebAssembly.Modul
 }
 
 config.compilerWasm = {
-  getRuntime: async () => await import('@prisma/client/runtime/query_compiler_bg.sqlite.js'),
+  getRuntime: async () => await import('@prisma/client/runtime/query_compiler_fast_bg.sqlite.js'),
 
   getQueryCompilerWasmModule: async () => {
-    const { wasm } = await import('@prisma/client/runtime/query_compiler_bg.sqlite.wasm-base64.js')
+    const { wasm } = await import('@prisma/client/runtime/query_compiler_fast_bg.sqlite.wasm-base64.js')
     return await decodeBase64AsWasm(wasm)
   },
+
+  importName: './query_compiler_fast_bg.js',
 }
 
 export type LogOptions<ClientOptions extends Prisma.PrismaClientOptions> = 'log' extends keyof ClientOptions
