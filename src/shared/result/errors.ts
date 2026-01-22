@@ -7,14 +7,14 @@
  * Abstract base class for all application errors
  * Developers should extend this class to create custom domain-specific errors
  */
-export abstract class ErrorResult {
+export abstract class ErrorResult extends Error {
   type: string
-  message: string
   details: string[]
 
   constructor(message: string, details: string[]) {
+    super(message)
+    this.name = this.constructor.name
     this.type = this.constructor.name
-    this.message = message
     this.details = details
   }
 }

@@ -148,6 +148,40 @@ export class Result<T, E> {
   }
 
   /**
+   * Maps an `Ok` value to a new `Result` containing a different value type `U`.
+   * If `Result` is `Err`, it returns the `Err` value unchanged.
+   * @template U - The new success value type
+   * @param fn - The mapping function to apply to the `Ok` value
+   * @returns A new `Result` with the transformed `Ok` value, or the original `Err`
+   */
+  map<U>(fn: (value: T) => U): Result<U, E> {
+    return this._isOk ? Result.ok(fn(this._value as T)) : Result.err<E, U>(this._error as E)
+  }
+
+  /**
+   * Maps an `Ok` value to a new `Result` of type `Result<U, E>`.
+   * This is useful for chaining operations that themselves return `Result`.
+   * If `Result` is `Err`, it returns the `Err` value unchanged.
+   * @template U - The new success value type
+   * @param fn - The mapping function to apply to the `Ok` value
+   * @returns A new `Result` (which can be Ok or Err) with the transformed value, or the original `Err`
+   */
+  flatMap<U>(fn: (value: T) => Result<U, E>): Result<U, E> {
+    return this._isOk ? fn(this._value as T) : Result.err<E, U>(this._error as E)
+  }
+
+  /**
+   * Maps an `Err` value to a new `Result` containing a different error type `F`.
+   * If `Result` is `Ok`, it returns the `Ok` value unchanged.
+   * @template F - The new error type
+   * @param fn - The mapping function to apply to the `Err` value
+   * @returns A new `Result` with the transformed `Err` value, or the original `Ok`
+   */
+  mapErr<F>(fn: (error: E) => F): Result<T, F> {
+    return this._isOk ? Result.ok<T, F>(this._value as T) : Result.err(fn(this._error as E))
+  }
+
+  /**
    * Pattern matches on the Result, executing the appropriate handler.
    * Provides a type-safe way to handle both Ok and Err cases.
    * @template U - The return type of the handlers
