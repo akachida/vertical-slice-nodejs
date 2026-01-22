@@ -23,7 +23,7 @@ export class CreateUserModule implements FeatureModule {
   registerRoutes(mediator: InMemoryMediator): RouteConfig {
     const router = Router()
     const controller = new CreateUserController(mediator)
-    router.post('/', (req, res) => controller.handle(req, res))
+    router.post('/', (req, res, next) => controller.handle(req, res, next))
 
     return {
       basePath: '/users',
