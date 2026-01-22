@@ -33,7 +33,7 @@ export class CreateUserController {
 
       result.match({
         ok: (data: CreateUserResult) => {
-          res.redirect(`/v1/some-entity-uri/${data.id}`)
+          res.status(201).location(`/v1/users/${data.id}`).json(data)
         },
         err: (error: ErrorResult) => {
           next(error)

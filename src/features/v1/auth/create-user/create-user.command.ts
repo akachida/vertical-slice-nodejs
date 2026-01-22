@@ -9,7 +9,7 @@ import { CreateUserDataRequest } from '@/features/v1/auth/create-user/create-use
  */
 export const createUserSchema = z.object({
   email: z.string().email(),
-  name: z.string(),
+  name: z.string().min(1).max(100),
 })
 
 /**
