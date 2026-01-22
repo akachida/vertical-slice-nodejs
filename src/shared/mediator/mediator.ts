@@ -2,38 +2,48 @@ import { Command, CommandHandler, Query, QueryHandler } from '@/shared/cqs'
 import { ErrorResult, Result } from '@/shared/result'
 
 /**
- * Request type that can be either a Command or Query
+ * Union type representing any request that can be sent through the mediator.
+ * Can be either a Command (write operation) or Query (read operation).
  */
 export type Request = Command | Query
 
 /**
- * Handler type that can process Commands or Queries
- * Now returns Result for functional error handling
+ * Union type representing handlers that can process requests.
+ * Supports both CommandHandler and QueryHandler with Result-based error handling.
  */
 export type Handler<TRequest extends Request, TResult, TError = ErrorResult> =
   | CommandHandler<TRequest & Command, TResult, TError>
   | QueryHandler<TRequest & Query, TResult, TError>
 
 /**
- * Mediator interface for sending Commands and Queries
- * Returns Result type for functional error handling
+ * Mediator interface implementing the Mediator pattern.
+ * Provides a central point for sending Commands and Queries to their handlers.
+ * Decouples features from each other by routing requests through a single interface.
  */
 export interface Mediator {
+  /**
+   * Sends a request (Command or Query) to its registered handler.
+   * @template TResult - The expected success result type
+   * @template TError - The expected error type (defaults to ErrorResult)
+   * @param request - Command or Query instance to process
+   * @returns Result containing either success data or an error
+   */
   send<TResult, TError = ErrorResult>(request: Request): Promise<Result<TResult, TError>>
 }
 
 /**
- * Simple in-memory Mediator implementation
- * Routes requests to their registered handlers
+ * In-memory implementation of the Mediator pattern.
+ * Maintains a registry of handlers and routes requests to them based on request type name.
+ * Thread-safe for single-threaded Node.js environment.
  */
 export class InMemoryMediator implements Mediator {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   private handlers = new Map<string, Handler<any, any, any>>()
 
   /**
-   * Register a handler for a specific request type
-   * @param requestName - Unique identifier for the request type
-   * @param handler - Handler instance that will process the request
+   * Registers a handler for a specific request type.
+   * @param requestName - Unique identifier for the request type (typically the class name)
+   * @param handler - Handler instance that will process requests of this type
    * @throws Error if a handler is already registered for the request type
    */
   register<TRequest extends Request, TResult, TError = ErrorResult>(
@@ -48,14 +58,12 @@ export class InMemoryMediator implements Mediator {
   }
 
   /**
-   * Send a request to its registered handler
-   * @param request - Command or Query to be processed
+   * Sends a request to its registered handler and returns the result.
+   * @param request - Command or Query instance to be processed
    * @returns Result from the handler execution
    * @throws Error if no handler is registered for the request type
    */
-  async send<TResult, TError = ErrorResult>(
-    request: Request,
-  ): Promise<Result<TResult, TError>> {
+  async send<TResult, TError = ErrorResult>(request: Request): Promise<Result<TResult, TError>> {
     const requestName = request.constructor.name
     const handler = this.handlers.get(requestName)
 

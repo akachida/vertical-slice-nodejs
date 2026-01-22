@@ -13,27 +13,16 @@ import { FeatureModule, InMemoryMediator, RouteConfig } from '@/shared/mediator'
  * Handles user creation command and route registration
  */
 export class CreateUserModule implements FeatureModule {
-  /**
-   * Register command handlers with the mediator
-   */
   registerHandlers(mediator: InMemoryMediator): void {
-    // Infrastructure dependencies
     const userRepository = new PrismaUserRepository()
     const emailService = new ConsoleEmailService()
-
-    // Register command handler
     const handler = new CreateUserCommandHandler(userRepository, emailService)
     mediator.register(CreateUserCommand.name, handler)
   }
 
-  /**
-   * Register routes for this feature
-   */
   registerRoutes(mediator: InMemoryMediator): RouteConfig {
     const router = Router()
     const controller = new CreateUserController(mediator)
-
-    // Define routes
     router.post('/', (req, res) => controller.handle(req, res))
 
     return {

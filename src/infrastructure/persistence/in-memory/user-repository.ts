@@ -1,5 +1,9 @@
 import { UserRepository, User } from '@/domain/user/user'
 
+/**
+ * In-memory implementation of UserRepository.
+ * Useful for testing and local development without database dependencies.
+ */
 export class InMemoryUserRepository implements UserRepository {
   private users: User[] = []
 

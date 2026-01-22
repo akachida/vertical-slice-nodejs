@@ -1,6 +1,10 @@
 import { UserRepository, User } from '@/domain/user/user'
 import { prisma } from '@/shared/db/client'
 
+/**
+ * Prisma-based implementation of UserRepository.
+ * Handles user persistence using PostgreSQL via Prisma ORM.
+ */
 export class PrismaUserRepository implements UserRepository {
   async save(user: User): Promise<User> {
     const saved = await prisma.user.create({
