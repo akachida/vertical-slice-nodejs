@@ -7,6 +7,20 @@ import { Result, ErrorResult, Unit } from '@/shared/result'
  */
 export abstract class Command {
   public readonly _tag: string = 'Command' as const
+
+  /**
+   * Indicates whether this command requires a database transaction.
+   * Set to true in command classes that need transactional behavior.
+   * The mediator will automatically wrap execution in a Unit of Work.
+   */
+  public readonly transactional?: boolean
+}
+
+/**
+ * Type guard to check if a command requires a transaction
+ */
+export function isTransactionalCommand(command: Command): boolean {
+  return command.transactional === true
 }
 
 /**

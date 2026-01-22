@@ -15,9 +15,11 @@ export const createUserSchema = z.object({
 /**
  * Command to create a new user in the system.
  * Encapsulates the user creation request data.
+ * Marked as transactional - mediator will automatically wrap in Unit of Work.
  */
 export class CreateUserCommand implements Command {
   readonly _tag = 'Command' as const
+  readonly transactional = true
 
   constructor(
     public readonly email: string,

@@ -5,19 +5,23 @@ import { CreateUserController } from './create-user.controller'
 import { CreateUserCommandHandler } from './create-user.handler'
 
 import { ConsoleEmailService } from '@/infrastructure/messaging/email-service/console-email-service'
-import { PrismaUserRepository } from '@/infrastructure/persistence/prisma/user-repository'
 import { FeatureModule, InMemoryMediator, RouteConfig } from '@/shared/mediator'
+import { IUnitOfWorkFactory } from '@/shared/db/unit-of-work'
 
 /**
  * Create User Feature Module
  * Handles user creation command and route registration
  */
 export class CreateUserModule implements FeatureModule {
+  constructor(private readonly unitOfWorkFactory: IUnitOfWorkFactory) {}
+
   registerHandlers(mediator: InMemoryMediator): void {
-    const userRepository = new PrismaUserRepository()
     const emailService = new ConsoleEmailService()
-    const handler = new CreateUserCommandHandler(userRepository, emailService)
-    mediator.register(CreateUserCommand.name, handler)
+
+    mediator.registerFactory(CreateUserCommand.name, () => {
+      const unitOfWork = this.unitOfWorkFactory.create()
+      return new CreateUserCommandHandler(unitOfWork, emailService)
+    })
   }
 
   registerRoutes(mediator: InMemoryMediator): RouteConfig {

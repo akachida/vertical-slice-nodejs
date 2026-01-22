@@ -1,28 +1,30 @@
 import { EmailAlreadyExistsError } from '@/features/v1/auth/create-user/errors/email-already-exists-error'
 import { CreateUserCommand } from '@/features/v1/auth/create-user/create-user.command'
-import { User, UserRepository } from '@/domain/user/user'
+import { User } from '@/domain/user/user'
 import { EmailService } from '@/infrastructure/messaging/interfaces/email-service'
 import { CommandHandler } from '@/shared/cqs'
 import { ErrorResult, Result } from '@/shared/result'
+import { IUnitOfWork } from '@/shared/db/unit-of-work'
 
 /**
  * Handler for CreateUserCommand
- * Orchestrates user creation with domain logic and infrastructure
+ * Uses Unit of Work with DbSet-like repository access (EF Core style)
  */
 export class CreateUserCommandHandler implements CommandHandler<CreateUserCommand, CreateUserResult> {
   constructor(
-    private readonly userRepository: UserRepository,
+    private readonly unitOfWork: IUnitOfWork,
     private readonly emailService: EmailService,
   ) {}
 
   async execute(command: CreateUserCommand): Promise<Result<CreateUserResult, ErrorResult>> {
-    const existing = await this.userRepository.findByEmail(command.email)
+    const existing = await this.unitOfWork.users.findByEmail(command.email)
+
     if (existing) {
       return Result.err(EmailAlreadyExistsError.default())
     }
 
     const newUser = User.create(command.email, command.name)
-    const savedUser = await this.userRepository.save(newUser)
+    const savedUser = await this.unitOfWork.users.save(newUser)
 
     if (savedUser.name) {
       await this.emailService.sendWelcomeEmail(savedUser.email, savedUser.name)

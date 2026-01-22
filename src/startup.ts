@@ -2,11 +2,18 @@ import { Application } from 'express'
 
 import { FeatureModule, InMemoryMediator, RouteConfig } from '@/shared/mediator'
 import { CreateUserModule } from '@/features/v1/auth/create-user'
+import { PrismaUnitOfWorkFactory } from '@/shared/db/prisma-unit-of-work'
+import { prisma } from '@/shared/db/client'
+
+/**
+ * Unit of Work factory for database transactions
+ */
+const unitOfWorkFactory = new PrismaUnitOfWorkFactory(prisma)
 
 /**
  * All feature modules in the application
  */
-export const featureModules: FeatureModule[] = [new CreateUserModule()]
+export const featureModules: FeatureModule[] = [new CreateUserModule(unitOfWorkFactory)]
 
 /**
  * Composition Root
@@ -14,6 +21,8 @@ export const featureModules: FeatureModule[] = [new CreateUserModule()]
  */
 export function createMediator(): InMemoryMediator {
   const mediator = new InMemoryMediator()
+
+  mediator.setUnitOfWorkFactory(unitOfWorkFactory)
 
   featureModules.forEach((module) => module.registerHandlers(mediator))
 

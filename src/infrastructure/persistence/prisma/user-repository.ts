@@ -1,13 +1,17 @@
 import { UserRepository, User } from '@/domain/user/user'
-import { prisma } from '@/shared/db/client'
+import { IUnitOfWork } from '@/shared/db/unit-of-work'
 
 /**
  * Prisma-based implementation of UserRepository.
- * Handles user persistence using PostgreSQL via Prisma ORM.
+ * Uses Unit of Work for transaction participation.
  */
 export class PrismaUserRepository implements UserRepository {
+  constructor(private readonly unitOfWork: IUnitOfWork) {}
+
   async save(user: User): Promise<User> {
-    const saved = await prisma.user.create({
+    const tx = this.unitOfWork.getTransaction()
+
+    const saved = await tx.user.create({
       data: {
         email: user.email,
         name: user.name,
@@ -18,7 +22,9 @@ export class PrismaUserRepository implements UserRepository {
   }
 
   async findByEmail(email: string): Promise<User | null> {
-    const found = await prisma.user.findUnique({
+    const tx = this.unitOfWork.getTransaction()
+
+    const found = await tx.user.findUnique({
       where: { email },
     })
 

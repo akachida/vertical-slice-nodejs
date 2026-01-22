@@ -1,2 +1,2 @@
-export { Command, CommandHandler } from './command'
+export { Command, CommandHandler, isTransactionalCommand } from './command'
 export { Query, QueryHandler } from './query'
